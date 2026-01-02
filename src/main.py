@@ -46,19 +46,24 @@ pm10_grade_dict = {
 
 # FUNCTIONS
 def exception_msg(where: str, exception: Exception) -> str:
-  return f'[{datetime.now().strftime('%H:%M')}] [EXCEPTION|{where}] {type(exception).__name__}: {exception}'
+  return f'\033[33m[{datetime.now().strftime('%H:%M:%S')}] [EXCP|{where}] <{type(exception).__name__}> {exception}\033[0m'
 
 def exception_print(where: str, exception: Exception):
   print(exception_msg(where=where, exception=exception))
 
 def info_msg(where: str, message: str):
-  return f'[{datetime.now().strftime('%H:%M')}] [INFO|{where}] {message}'
+  return f'[{datetime.now().strftime('%H:%M:%S')}] [INFO|{where}] {message}'
 
 def info_print(where: str, message: str):
   print(info_msg(where, message))
 
+# API
+api_success = 0
+api_fail = 0
+
 def draw_info(image):
   # DEFAULT
+  global api_success, api_fail
   now = datetime.now()
   draw = ImageDraw.Draw(image)
 
@@ -84,11 +89,15 @@ def draw_info(image):
 
       draw.text(xy=news_positions[i], text=headline, fill=news_fill, font=news_font)
 
+    info_print(where='NEWS', message=f'API 수신 상태: 양호')
+    api_success += 1
+
   except Exception as e:
     for i in range(3):
       draw.text(xy=news_positions[i], text='정보 없음', fill=error_fill, font=news_font)
 
     exception_print(where='NEWS', exception=e)
+    api_fail += 1
 
   # WEATHER    
   try:
@@ -114,11 +123,15 @@ def draw_info(image):
     draw.text(xy=temp_position, text=f"{temp}℃", fill=weather_fill, font=weather_font)
     draw.text(xy=pty_position, text=pty_dict.get(pty), fill=weather_fill, font=weather_font)
 
+    info_print(where='WTHR', message='API 수신 상태: 양호')
+    api_success += 1
+
   except Exception as e:
     draw.text(xy=temp_position, text="정보 없음", fill=error_fill, font=weather_font)
     draw.text(xy=pty_position, text="정보 없음", fill=error_fill, font=weather_font)
 
-    exception_print(where='WEATHER', exception=e)
+    exception_print(where='WTHR', exception=e)
+    api_fail += 1
 
   # FINE_DUST
   try:
@@ -142,11 +155,15 @@ def draw_info(image):
     if pm10_grade != '매우 나쁨':
       draw.text(xy=pm10_positions[1], text=f'({pm10_value}㎍/㎥)', fill=weather_fill, font=dust_font)
 
+    info_print(where='PM10', message='API 수신 상태: 양호')
+    api_success += 1
+
   except Exception as e:
     draw.text(xy=pm10_positions[0], text="정보 없음", fill=error_fill, font=weather_font)
 
-    exception_print(where='FINE_DUST', exception=e)
-  
+    exception_print(where='PM10', exception=e)
+    api_fail += 1
+
   return image
 
 def draw_datetime(image):
@@ -170,22 +187,23 @@ try:
     ctypes.windll.shcore.SetProcessDpiAwareness(1)
 except Exception as e:
     ctypes.windll.user32.SetProcessDPIAware()
-    exception_print('RESOLUTION', e)
+    exception_print(where='RESO', exception=e)
 
 # PYGAME
 clock = pygame.time.Clock()
-updated = 0
-
 info_image: Image.Image = draw_info(background.copy())
+api_success = api_fail = updated = 0
 
 def update_info():
-  global info_image
+  global info_image, api_success, api_fail
   try:
     info_image = draw_info(background.copy())
-    info_print('UPDATE_INFO', '백그라운드에서 API 정보가 업데이트 되었습니다.')
+    info_print(where='UPDT', message=f'API 수신 양호: {api_success}')
+    info_print(where='UPDT', message=f'API 수신 불량: {api_fail}')
+    api_success = api_fail = 0
 
   except Exception as e:
-    exception_print('UPDATE_INFO', e)
+    exception_print(where='UPDT', exception=e)
 
 while True:
   for event in pygame.event.get():
