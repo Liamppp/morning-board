@@ -1,4 +1,4 @@
-import os, sys, pygame, requests, feedparser, threading, ctypes
+import os, sys, pygame, requests, feedparser, threading
 from datetime import datetime
 from dotenv import load_dotenv
 from PIL import Image, ImageFont, ImageDraw
@@ -10,7 +10,9 @@ service_key = os.environ.get('service_key')
 
 # PYGAME SETTINGS
 pygame.init()
-screen = pygame.display.set_mode((1920, 1080), pygame.FULLSCREEN)
+
+screen_size = (1920, 1080)
+screen = pygame.display.set_mode(screen_size, pygame.FULLSCREEN | pygame.SCALED, display=1)
 
 # PIL
 background_dir = os.path.join(os.getcwd(), 'assets', 'background')
@@ -85,7 +87,7 @@ def draw_info(image):
 
     for i, entry in enumerate(feed.entries[:3], 0):
       published = parsedate_to_datetime(entry.published).strftime('%H:%M')
-      headline = f"[{published}] {entry.title}"
+      headline = f"[{published}] {entry.title[:32]}{'...' if len(entry.title) > 32 else ''}"
 
       draw.text(xy=news_positions[i], text=headline, fill=news_fill, font=news_font)
 
@@ -182,13 +184,6 @@ def draw_datetime(image):
 
   return image
 
-# RESOLUTION SETTING
-try:
-    ctypes.windll.shcore.SetProcessDpiAwareness(1)
-except Exception as e:
-    ctypes.windll.user32.SetProcessDPIAware()
-    exception_print(where='RESO', exception=e)
-
 # PYGAME
 clock = pygame.time.Clock()
 info_image: Image.Image = draw_info(background.copy())
@@ -216,7 +211,8 @@ while True:
     updated = 0
   
   image = draw_datetime(info_image.copy())
-  screen.blit(pygame.image.fromstring(image.tobytes("raw", "RGBA"), (1920, 1080), "RGBA"), (0, 0))
+  image = pygame.image.fromstring(image.tobytes("raw", "RGBA"), screen_size, "RGBA")
+  screen.blit(image, (0, 0))
   pygame.display.flip()
 
   clock.tick(1)
